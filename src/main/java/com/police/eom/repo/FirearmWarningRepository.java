@@ -23,4 +23,9 @@ public interface FirearmWarningRepository extends JpaRepository<FirearmWarning, 
     List<FirearmWarning> findAllActive();
 
     List<FirearmWarning> findByOfficerIdAndStatus(Long officerId, String status);
+
+    @Query("SELECT COUNT(w) > 0 FROM FirearmWarning w WHERE w.issuanceId = :issuanceId " +
+           "AND w.warningLevel = :warningLevel AND w.violationRecorded = true")
+    boolean hasViolationRecordedForLevel(@Param("issuanceId") Long issuanceId,
+                                         @Param("warningLevel") String warningLevel);
 }

@@ -59,40 +59,79 @@ public class WarningService {
                 .orElseThrow(() -> ApiException.notFound("预警不存在"));
     }
 
+    public static class ProcessResult {
+        public final FirearmWarning warning;
+        public final boolean newViolation;
+        public final String violationLevel;
+
+        public ProcessResult(FirearmWarning warning, boolean newViolation, String violationLevel) {
+            this.warning = warning;
+            this.newViolation = newViolation;
+            this.violationLevel = violationLevel;
+        }
+    }
+
     @Transactional
-    public FirearmWarning processIssuance(FirearmIssuance issuance, Officer officer) {
+    public ProcessResult processIssuance(FirearmIssuance issuance, Officer officer) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime dueAt = issuance.getDueAt();
 
         String currentLevel = calculateWarningLevel(now, dueAt);
         if (currentLevel == null) {
-            return null;
+            return new ProcessResult(null, false, null);
         }
 
         Optional<FirearmWarning> existingOpt = warningRepo.findActiveByIssuanceId(issuance.getId());
+        boolean isViolationLevel = FirearmWarning.LEVEL_OVERDUE.equals(currentLevel)
+                || FirearmWarning.LEVEL_SEVERE.equals(currentLevel);
 
         if (existingOpt.isPresent()) {
             FirearmWarning existing = existingOpt.get();
+            boolean newViolation = false;
+            String violationLevelForRecord = null;
+
             if (!existing.getWarningLevel().equals(currentLevel)) {
                 existing.setWarningLevel(currentLevel);
                 existing.setEscalationCount(existing.getEscalationCount() + 1);
                 existing.setLastNotifiedAt(now);
+
+                if (isViolationLevel && !existing.isViolationRecorded()) {
+                    boolean alreadyRecorded = warningRepo.hasViolationRecordedForLevel(
+                            issuance.getId(), currentLevel);
+                    if (!alreadyRecorded) {
+                        existing.setViolationRecorded(true);
+                        newViolation = true;
+                        violationLevelForRecord = currentLevel;
+                    }
+                }
+
                 FirearmWarning updated = warningRepo.save(existing);
-                log.info("Escalated warning for issuance {} from {} to {}",
-                        issuance.getId(), existing.getWarningLevel(), currentLevel);
+                log.info("Escalated warning for issuance {} from {} to {}, newViolation={}",
+                        issuance.getId(), existing.getWarningLevel(), currentLevel, newViolation);
                 sendNotification(updated, officer);
-                return updated;
+                return new ProcessResult(updated, newViolation, violationLevelForRecord);
             } else {
                 Duration notifyInterval = configService.getNotificationInterval();
                 if (existing.getLastNotifiedAt() == null ||
                         Duration.between(existing.getLastNotifiedAt(), now).compareTo(notifyInterval) >= 0) {
                     existing.setLastNotifiedAt(now);
+
+                    if (isViolationLevel && !existing.isViolationRecorded()) {
+                        boolean alreadyRecorded = warningRepo.hasViolationRecordedForLevel(
+                                issuance.getId(), currentLevel);
+                        if (!alreadyRecorded) {
+                            existing.setViolationRecorded(true);
+                            newViolation = true;
+                            violationLevelForRecord = currentLevel;
+                        }
+                    }
+
                     FirearmWarning updated = warningRepo.save(existing);
                     sendNotification(updated, officer);
-                    return updated;
+                    return new ProcessResult(updated, newViolation, violationLevelForRecord);
                 }
             }
-            return existing;
+            return new ProcessResult(existing, false, null);
         } else {
             FirearmWarning warning = new FirearmWarning();
             warning.setIssuanceId(issuance.getId());
@@ -101,11 +140,24 @@ public class WarningService {
             warning.setWarningLevel(currentLevel);
             warning.setStatus(FirearmWarning.STATUS_OPEN);
             warning.setLastNotifiedAt(now);
+
+            boolean newViolation = false;
+            String violationLevelForRecord = null;
+            if (isViolationLevel) {
+                boolean alreadyRecorded = warningRepo.hasViolationRecordedForLevel(
+                        issuance.getId(), currentLevel);
+                if (!alreadyRecorded) {
+                    warning.setViolationRecorded(true);
+                    newViolation = true;
+                    violationLevelForRecord = currentLevel;
+                }
+            }
+
             FirearmWarning saved = warningRepo.save(warning);
-            log.info("Created {} warning for issuance {} (officer {})",
-                    currentLevel, issuance.getId(), issuance.getOfficerId());
+            log.info("Created {} warning for issuance {} (officer {}), newViolation={}",
+                    currentLevel, issuance.getId(), issuance.getOfficerId(), newViolation);
             sendNotification(saved, officer);
-            return saved;
+            return new ProcessResult(saved, newViolation, violationLevelForRecord);
         }
     }
 

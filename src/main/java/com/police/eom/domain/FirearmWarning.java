@@ -65,6 +65,9 @@ public class FirearmWarning {
     @Column(name = "escalation_count", nullable = false)
     private int escalationCount = 0;
 
+    @Column(name = "violation_recorded", nullable = false)
+    private boolean violationRecorded = false;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -114,6 +117,8 @@ public class FirearmWarning {
     public void setLastNotifiedAt(LocalDateTime lastNotifiedAt) { this.lastNotifiedAt = lastNotifiedAt; }
     public int getEscalationCount() { return escalationCount; }
     public void setEscalationCount(int escalationCount) { this.escalationCount = escalationCount; }
+    public boolean isViolationRecorded() { return violationRecorded; }
+    public void setViolationRecorded(boolean violationRecorded) { this.violationRecorded = violationRecorded; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

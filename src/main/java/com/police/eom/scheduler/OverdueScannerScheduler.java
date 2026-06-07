@@ -1,7 +1,6 @@
 package com.police.eom.scheduler;
 
 import com.police.eom.domain.FirearmIssuance;
-import com.police.eom.domain.FirearmWarning;
 import com.police.eom.domain.Officer;
 import com.police.eom.repo.FirearmIssuanceRepository;
 import com.police.eom.repo.OfficerRepository;
@@ -16,9 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Component
 public class OverdueScannerScheduler {
@@ -32,8 +29,6 @@ public class OverdueScannerScheduler {
     private final AccountabilityService accountabilityService;
     private final SchedulerLockService lockService;
     private final SystemConfigService configService;
-
-    private final Map<Long, String> lastRecordedViolation = new HashMap<>();
 
     public OverdueScannerScheduler(FirearmIssuanceRepository issuanceRepo,
                                    OfficerRepository officerRepo,
@@ -79,22 +74,17 @@ public class OverdueScannerScheduler {
                         continue;
                     }
 
-                    FirearmWarning warning = warningService.processIssuance(issuance, officer);
-                    if (warning != null) {
-                        switch (warning.getWarningLevel()) {
-                            case FirearmWarning.LEVEL_IMMINENT -> imminentCount++;
-                            case FirearmWarning.LEVEL_OVERDUE -> overdueCount++;
-                            case FirearmWarning.LEVEL_SEVERE -> severeCount++;
+                    WarningService.ProcessResult result = warningService.processIssuance(issuance, officer);
+                    if (result.warning != null) {
+                        switch (result.warning.getWarningLevel()) {
+                            case com.police.eom.domain.FirearmWarning.LEVEL_IMMINENT -> imminentCount++;
+                            case com.police.eom.domain.FirearmWarning.LEVEL_OVERDUE -> overdueCount++;
+                            case com.police.eom.domain.FirearmWarning.LEVEL_SEVERE -> severeCount++;
                         }
 
-                        if (FirearmWarning.LEVEL_OVERDUE.equals(warning.getWarningLevel()) ||
-                            FirearmWarning.LEVEL_SEVERE.equals(warning.getWarningLevel())) {
-                            String key = issuance.getId() + ":" + warning.getWarningLevel();
-                            if (!key.equals(lastRecordedViolation.get(issuance.getId()))) {
-                                accountabilityService.recordViolation(
-                                        issuance.getOfficerId(), warning.getWarningLevel());
-                                lastRecordedViolation.put(issuance.getId(), key);
-                            }
+                        if (result.newViolation && result.violationLevel != null) {
+                            accountabilityService.recordViolation(
+                                    issuance.getOfficerId(), result.violationLevel);
                         }
                     }
 
