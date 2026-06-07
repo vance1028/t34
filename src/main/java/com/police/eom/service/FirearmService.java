@@ -12,20 +12,25 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** 枪械业务：登记、领用、归还。 */
 @Service
 public class FirearmService {
 
     private final FirearmRepository firearmRepo;
     private final FirearmIssuanceRepository issuanceRepo;
     private final OfficerRepository officerRepo;
+    private final AccountabilityService accountabilityService;
+    private final WarningService warningService;
 
     public FirearmService(FirearmRepository firearmRepo,
                           FirearmIssuanceRepository issuanceRepo,
-                          OfficerRepository officerRepo) {
+                          OfficerRepository officerRepo,
+                          AccountabilityService accountabilityService,
+                          WarningService warningService) {
         this.firearmRepo = firearmRepo;
         this.issuanceRepo = issuanceRepo;
         this.officerRepo = officerRepo;
+        this.accountabilityService = accountabilityService;
+        this.warningService = warningService;
     }
 
     public List<Firearm> list(String status) {
@@ -71,6 +76,13 @@ public class FirearmService {
             throw ApiException.badRequest("应归还时间必须晚于当前时间");
         }
 
+        if (accountabilityService.isOfficerRestricted(officerId)) {
+            var restriction = accountabilityService.getActiveRestriction(officerId);
+            String msg = restriction.map(r -> "该民警处于领枪限制状态，原因：" + r.getReason() +
+                    "，限制到期：" + r.getExpiresAt()).orElse("该民警处于领枪限制状态");
+            throw ApiException.forbidden(msg);
+        }
+
         firearm.setStatus("ISSUED");
         firearmRepo.save(firearm);
 
@@ -81,7 +93,11 @@ public class FirearmService {
         iss.setAmmoIssued(ammoIssued);
         iss.setDueAt(dueAt);
         iss.setStatus("ISSUED");
-        return issuanceRepo.save(iss);
+        FirearmIssuance saved = issuanceRepo.save(iss);
+
+        accountabilityService.updateUnreturnedStatus(officerId);
+
+        return saved;
     }
 
     @Transactional
@@ -107,6 +123,10 @@ public class FirearmService {
 
         firearm.setStatus("IN_STORE");
         firearmRepo.save(firearm);
+
+        warningService.closeWarningsForIssuance(iss.getId(), null, null);
+        accountabilityService.updateUnreturnedStatus(iss.getOfficerId());
+
         return iss;
     }
 

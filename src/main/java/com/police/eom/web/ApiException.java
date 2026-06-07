@@ -26,4 +26,8 @@ public class ApiException extends RuntimeException {
     public static ApiException conflict(String msg) {
         return new ApiException(HttpStatus.CONFLICT, msg);
     }
+
+    public static ApiException forbidden(String msg) {
+        return new ApiException(HttpStatus.FORBIDDEN, msg);
+    }
 }

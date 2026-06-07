@@ -71,3 +71,78 @@ CREATE TABLE IF NOT EXISTS firearm_issuances (
     CONSTRAINT fk_issuance_firearm FOREIGN KEY (firearm_id) REFERENCES firearms (id),
     CONSTRAINT fk_issuance_officer FOREIGN KEY (officer_id) REFERENCES officers (id)
 );
+
+CREATE TABLE IF NOT EXISTS system_configs (
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    config_key    VARCHAR(128) NOT NULL,
+    config_value  VARCHAR(512) NOT NULL DEFAULT '',
+    description   VARCHAR(255) NOT NULL DEFAULT '',
+    updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_config_key UNIQUE (config_key)
+);
+
+CREATE TABLE IF NOT EXISTS firearm_warnings (
+    id                BIGINT       NOT NULL AUTO_INCREMENT,
+    issuance_id       BIGINT       NOT NULL,
+    officer_id        BIGINT       NOT NULL,
+    department        VARCHAR(128) NOT NULL DEFAULT '',
+    warning_level     VARCHAR(16)  NOT NULL,
+    status            VARCHAR(16)  NOT NULL DEFAULT 'OPEN',
+    confirmed_by      BIGINT       NULL,
+    confirmed_at      TIMESTAMP    NULL,
+    transferred_to    BIGINT       NULL,
+    transferred_at    TIMESTAMP    NULL,
+    transferred_by    BIGINT       NULL,
+    closed_by         BIGINT       NULL,
+    closed_at         TIMESTAMP    NULL,
+    close_reason      VARCHAR(500) NOT NULL DEFAULT '',
+    last_notified_at  TIMESTAMP    NULL,
+    escalation_count  INT          NOT NULL DEFAULT 0,
+    created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_warning_issuance FOREIGN KEY (issuance_id) REFERENCES firearm_issuances (id),
+    CONSTRAINT fk_warning_officer FOREIGN KEY (officer_id) REFERENCES officers (id)
+);
+
+CREATE TABLE IF NOT EXISTS firearm_accountability (
+    id                    BIGINT      NOT NULL AUTO_INCREMENT,
+    officer_id            BIGINT      NOT NULL,
+    overdue_count         INT         NOT NULL DEFAULT 0,
+    severe_overdue_count  INT         NOT NULL DEFAULT 0,
+    total_violations      INT         NOT NULL DEFAULT 0,
+    has_unreturned        BOOLEAN     NOT NULL DEFAULT FALSE,
+    last_violation_at     TIMESTAMP   NULL,
+    created_at            TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_accountability_officer UNIQUE (officer_id),
+    CONSTRAINT fk_accountability_officer FOREIGN KEY (officer_id) REFERENCES officers (id)
+);
+
+CREATE TABLE IF NOT EXISTS firearm_issuance_restrictions (
+    id                BIGINT       NOT NULL AUTO_INCREMENT,
+    officer_id        BIGINT       NOT NULL,
+    restriction_type  VARCHAR(32)  NOT NULL,
+    reason            VARCHAR(500) NOT NULL DEFAULT '',
+    restricted_by     BIGINT       NULL,
+    restricted_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at        TIMESTAMP    NULL,
+    status            VARCHAR(16)  NOT NULL DEFAULT 'ACTIVE',
+    lifted_by         BIGINT       NULL,
+    lifted_at         TIMESTAMP    NULL,
+    lift_reason       VARCHAR(500) NOT NULL DEFAULT '',
+    created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_restriction_officer FOREIGN KEY (officer_id) REFERENCES officers (id)
+);
+
+CREATE TABLE IF NOT EXISTS scheduler_locks (
+    lock_name     VARCHAR(64)  NOT NULL,
+    lock_holder   VARCHAR(128) NOT NULL,
+    lock_until    TIMESTAMP    NOT NULL,
+    locked_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (lock_name)
+);

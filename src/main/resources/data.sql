@@ -24,3 +24,26 @@ INSERT IGNORE INTO firearms (id, serial_no, model, type, caliber, status) VALUES
 
 INSERT IGNORE INTO firearm_issuances (id, firearm_id, officer_id, purpose, ammo_issued, issued_at, due_at, status) VALUES
   (1, 2, 4, '武装巡逻执勤', 15, '2026-06-01 08:00:00.000', '2026-06-01 20:00:00.000', 'ISSUED');
+
+INSERT IGNORE INTO system_configs (config_key, config_value, description) VALUES
+  ('warning.imminent.hours', '2', '临近到期提醒阈值（小时）'),
+  ('warning.overdue.severe_hours', '24', '严重超期阈值（小时）'),
+  ('warning.notification.interval_minutes', '30', '同级别预警重复通知间隔（分钟）'),
+  ('restriction.violation.threshold', '3', '累计违规次数阈值（达到即限制领枪）'),
+  ('restriction.default.days', '30', '默认限制期限（天）'),
+  ('scheduler.scanner.interval_ms', '60000', '超期扫描调度间隔（毫秒）'),
+  ('scheduler.lock.ttl_seconds', '300', '分布式锁TTL（秒）');
+
+INSERT IGNORE INTO firearms (id, serial_no, model, type, caliber, status) VALUES
+  (4, 'QX-77-100233', '92式手枪', 'PISTOL', '9mm', 'ISSUED'),
+  (5, 'QX-77-100234', '92式手枪', 'PISTOL', '9mm', 'ISSUED'),
+  (6, 'QX-79-200146', '79式微冲', 'SUBMACHINE_GUN', '7.62mm', 'ISSUED');
+
+INSERT IGNORE INTO firearm_issuances (id, firearm_id, officer_id, purpose, ammo_issued, issued_at, due_at, status) VALUES
+  (2, 4, 1, '案件侦办', 20, '2026-06-05 08:00:00.000', '2026-06-05 20:00:00.000', 'ISSUED'),
+  (3, 5, 2, '日常执勤', 10, '2026-06-07 06:00:00.000', '2026-06-07 18:00:00.000', 'ISSUED'),
+  (4, 6, 3, '应急演练', 30, '2026-06-07 08:00:00.000', '2026-06-08 08:00:00.000', 'ISSUED');
+
+INSERT IGNORE INTO firearm_accountability (officer_id, overdue_count, severe_overdue_count, total_violations, has_unreturned, last_violation_at) VALUES
+  (1, 2, 1, 3, 1, '2026-06-06 10:00:00.000'),
+  (4, 1, 1, 2, 1, '2026-06-02 08:00:00.000');

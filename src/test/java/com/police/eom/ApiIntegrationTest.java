@@ -123,7 +123,7 @@ class ApiIntegrationTest {
     void firearm_issue_and_return_flow() throws Exception {
         // firearm 1 在库
         String due = LocalDateTime.now().plusHours(6).toString();
-        String issueBody = "{\"officerId\":4,\"purpose\":\"巡逻\",\"ammoIssued\":15,\"dueAt\":\"" + due + "\"}";
+        String issueBody = "{\"officerId\":3,\"purpose\":\"巡逻\",\"ammoIssued\":15,\"dueAt\":\"" + due + "\"}";
         mvc.perform(post("/api/firearms/1/issue").contentType(MediaType.APPLICATION_JSON).content(issueBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("ISSUED"));
@@ -148,7 +148,7 @@ class ApiIntegrationTest {
     @Test
     void firearm_issue_pastDue_badRequest() throws Exception {
         String due = LocalDateTime.now().minusHours(1).toString();
-        String issueBody = "{\"officerId\":4,\"ammoIssued\":10,\"dueAt\":\"" + due + "\"}";
+        String issueBody = "{\"officerId\":3,\"ammoIssued\":10,\"dueAt\":\"" + due + "\"}";
         mvc.perform(post("/api/firearms/3/issue").contentType(MediaType.APPLICATION_JSON).content(issueBody))
                 .andExpect(status().isBadRequest());
     }

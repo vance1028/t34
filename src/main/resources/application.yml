@@ -26,6 +26,11 @@ spring:
       schema-locations: classpath:schema.sql
       data-locations: classpath:data.sql
 
+scheduler:
+  scanner:
+    interval: 60000
+
 logging:
   level:
     org.springframework: INFO
+    com.police.eom: INFO
